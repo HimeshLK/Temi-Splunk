@@ -1,2 +1,9 @@
 .venv
 .env
+
+
+pycache/
+*.pyc
+*.pyd
+*.pyo
+*.so

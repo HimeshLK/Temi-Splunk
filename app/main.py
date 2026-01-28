@@ -11,8 +11,22 @@ import os
 from bson import ObjectId  # ✅ add this
 from .schemas import RegistrationIn, FeedbackIn
 from .db import registrations, feedback, ensure_indexes
+import json
 
 app = FastAPI(title="Temi Event Backend (Mongo)", version="1.0.0")
+
+# Global variable to store visitors
+VISITORS_DATA = []
+
+def load_visitors():
+    global VISITORS_DATA
+    try:
+        with open("visitors.json", "r") as f:
+            VISITORS_DATA = json.load(f)
+        print(f"Loaded {len(VISITORS_DATA)} visitors.")
+    except Exception as e:
+        print(f"Error loading visitors.json: {e}")
+
 app.include_router(export_mail_router, prefix="/api", tags=["Export Mail"])
 app.include_router(export_router, prefix="/api", tags=["Export"])
 templates = Jinja2Templates(directory="app/templates")
@@ -28,7 +42,14 @@ def oid_to_str(doc: dict) -> dict:
 
 @app.on_event("startup")
 async def on_startup():
-    await ensure_indexes()
+    try:
+        await ensure_indexes()
+        print("Indexes ensured.")
+    except Exception as e:
+        print(f"WARNING: Could not connect to MongoDB/ensure indexes: {e}")
+        print("Running in limited mode (Visitors API will still work).")
+    
+    load_visitors()
 
 
 def now_utc():
@@ -69,6 +90,20 @@ async def api_create_feedback(event_id: str, payload: FeedbackIn):
     }
     result = await feedback.insert_one(doc)
     return {"ok": True, "id": str(result.inserted_id)}
+
+
+@app.get("/api/visitors/search")
+async def search_visitors(q: str = ""):
+    if not q:
+        return []
+    
+    query = q.lower()
+    results = [
+        v for v in VISITORS_DATA 
+        if v.get("Name") and query in v["Name"].lower()
+    ]
+    # Return top 20 matches
+    return results[:20]
 
 
 # ---------- QR Web Pages (guest phone) ----------
