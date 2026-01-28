@@ -6,11 +6,12 @@ import os
 import smtplib
 from email.message import EmailMessage
 
-# ✅ USE THE SAME COLLECTION YOUR APP USES
 from app.db import registrations
 
 router = APIRouter()
-TO_EMAIL = "himesha.fernando@ncinga.net"
+TO_EMAIL = os.getenv("TO_MAIL")
+
+
 
 
 def build_excel(rows: list[dict]) -> bytes:
